@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GreenFin AI</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family: Arial, sans-serif; }
+    body { background:#f4f7f6; color:#333; line-height:1.6; scroll-behavior: smooth; }
+    a { text-decoration:none; color:inherit; }
+
+    /* Navbar */
+    header {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 10px;
+      background: linear-gradient(90deg, black);
+      color:white; position:sticky; top:0; z-index:10;
+      animation: navbarGlow 4s infinite alternate;
+    }
+    .logo-wrapper {
+      width:60px; height:60px; border-radius:50%;
+      background:white; display:flex; justify-content:center; align-items:center;
+      overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,0.2);
+    }
+    .logo-wrapper img { width:95%; animation: leafWave 2s ease-in-out infinite alternate; }
+
+    @keyframes leafWave { 0%{transform:rotate(0deg) scale(1);} 50%{transform:rotate(-5deg) scale(1.05);} 100%{transform:rotate(5deg) scale(1);} }
+    @keyframes navbarGlow { 0%{box-shadow:0 0 5px #00C853;} 100%{box-shadow:0 0 20px #2196F3;} }
+
+    nav { position: relative; display:flex; align-items:center; }
+    nav a {
+      margin-left:25px; font-weight:bold; position:relative;
+      transition:color 0.3s ease;
+      display:inline-block; padding:10px 0;
+    }
+    nav a:hover { color:#42eefa; }
+    nav a.active { color:#5ce3fa; }
+
+    /* Active indicator */
+    .active-indicator {
+      position:absolute;
+      bottom:0; height:2.5px; width:66px;
+      background:#562af7;
+      border-radius:4px;
+      box-shadow:0 0 8px #ffe600, 0 0 20px #e85d5d;
+      transform:translateX(0);
+      opacity:1;
+    }
+    svg { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+    .bolt { stroke:#39e8ff; stroke-width:3px; fill:none; filter:drop-shadow(0 0 6px #082694); }
+
+    /* Hero Section */
+    .hero {
+      display:flex; align-items:center; justify-content:center;
+      height:100vh; text-align:center;
+      background: url('{{ url_for('static', filename='images/main.png') }}') no-repeat center center/cover;
+      position: relative; color: rgb(30, 27, 27);
+      background-attachment: fixed;
+    }
+    .hero::after { content:""; position:absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:1; }
+    .hero-content { position: relative; z-index:2; max-width:800px; padding:20px; }
+    .hero h1 { font-size:3.2rem; margin-bottom:20px; color:#fff; animation: fadeInUp 1.2s ease-in-out; }
+    .hero .tagline { font-size:1.4rem; margin-bottom:30px; color:#e0f7fa; animation: fadeInUp 1.5s ease-in-out; }
+    .hero button {
+      padding:15px 30px; background:linear-gradient(90deg,#00C853,#2196F3);
+      color:white; border:none; border-radius:8px;
+      font-size:1.1rem; cursor:pointer; transition: all 0.3s ease;
+      animation: fadeInUp 1.8s ease-in-out;
+    }
+    .hero button:hover { background:linear-gradient(90deg,#2196F3,#00C853); transform:scale(1.07); box-shadow:0 5px 15px rgba(0,0,0,0.3); }
+
+    /* Section Animation */
+    section { opacity:0; transform:translateY(50px); transition:opacity 1s ease, transform 1s ease; }
+    section.visible { opacity:1; transform:translateY(0); }
+
+    /* Features */
+    .features { padding:80px 50px; background:linear-gradient(to right,rgb(119, 229, 119),rgb(110, 110, 241)); text-align:center; }
+    .features h2 { color:#f9f9f9; margin-bottom:40px; animation: fadeInUp 1s; }
+    .features-container { display:flex; justify-content:center; flex-wrap:wrap; }
+    .feature-card {
+      background:#e6f5ea; padding:30px; margin:20px;
+      border-radius:12px; width:280px; text-align:center;
+      transition: transform 0.4s, box-shadow 0.4s, opacity 1s, transform 1s;
+      opacity:0; transform:translateY(50px);
+    }
+    .feature-card.visible { opacity:1; transform:translateY(0); }
+    .feature-card img { width:60px; margin-bottom:15px; transition:transform 0.3s ease; }
+    .feature-card h3 { margin-bottom:15px; color:#2196F3; }
+    .feature-card:hover { transform:translateY(-15px) scale(1.05); box-shadow:0 15px 25px rgba(0,0,0,0.2); }
+    .feature-card:hover img { transform:rotate(10deg) scale(1.1); }
+
+    /* How it Works */
+    .how-it-works { background:linear-gradient(to right,rgb(119, 229, 119),rgb(110, 110, 241)); padding:80px 20px; text-align:center; }
+    .how-it-works h2 { color:#ecf4f5; margin-bottom:40px; animation: fadeInUp 1s; }
+    .steps { display:flex; justify-content:space-around; flex-wrap:wrap; }
+    .step { width:250px; margin:20px; background:#fff; padding:20px; border-radius:12px; transition: all 0.3s ease; }
+    .step img { width:80px; margin-bottom:20px; transition:transform 0.3s ease; }
+    .step:hover { transform:translateY(-10px) scale(1.05); box-shadow:0 10px 20px rgba(0,0,0,0.15); }
+    .step:hover img { transform:scale(1.2); }
+
+    /* Testimonials */
+    .testimonials { padding:80px 20px; background:#ffffff; text-align:center; }
+    .testimonials h2 { color:#00C853; margin-bottom:40px; }
+    .testimonial-card {
+      display:inline-block; background:#e6f5ea; padding:30px; margin:20px;
+      border-radius:12px; width:280px; transition: all 0.3s ease;
+    }
+    .testimonial-card:hover { transform:translateY(-10px) scale(1.05); box-shadow:0 10px 20px rgba(0,0,0,0.2); }
+    .testimonial-card img { width:60px; border-radius:50%; margin-bottom:15px; transition:transform 0.3s; }
+    .testimonial-card:hover img { transform:rotate(-10deg) scale(1.1); }
+
+    /* CTA */
+    .cta { text-align:center; padding:60px 20px; }
+    .cta button {
+      padding:15px 30px;
+      background:linear-gradient(90deg,#00C853,#2196F3);
+      color:white; border:none; border-radius:8px; font-size:1.1rem; cursor:pointer;
+      transition: all 0.3s ease;
+    }
+    .cta button:hover { background:linear-gradient(90deg,#2196F3,#00C853); transform:scale(1.08); box-shadow:0 5px 15px rgba(0,0,0,0.3); }
+
+    /* Footer */
+    footer { background:#333; color:white; text-align:center; padding:25px; }
+
+    @keyframes fadeInUp { from{opacity:0; transform:translateY(30px);} to{opacity:1; transform:translateY(0);} }
+
+    @media(max-width:768px){
+      .features-container,.steps { flex-direction:column; align-items:center; }
+      .hero h1 { font-size:2.2rem; }
+      .hero p { font-size:1rem; }
+      header { flex-direction:column; gap:10px; }
+      nav a{ margin-left:15px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<header>
+  <div class="logo-wrapper">
+     <img src="{{ url_for('static', filename='images/GreenFinAI.png') }}" alt="GreenFin AI Logo">
+  </div>
+  <nav>
+    <a href="#">Home</a>
+    <a href="#features">Features</a>
+    <a href="#features">Smart Finance</a>
+    <a href="#features">Insights</a>
+    <a href="#about">About</a>
+    <a href="#login">Login</a>
+    <div class="active-indicator"></div>
+    <svg><path class="bolt" d=""></path></svg>
+  </nav>
+</header>
+
+<!-- Hero Section -->
+<section class="hero visible">
+  <div class="hero-content">
+    <h1>GreenFin AI</h1>
+    <p class="tagline">Smart Finance. Sustainable Future.</p>  
+  </div>
+</section>
+
+<!-- Features Section -->
+<section class="features" id="features">
+  <h2>Our Features</h2>
+  <div class="features-container">
+    <div class="feature-card"><img src="https://cdn-icons-png.flaticon.com/512/1041/1041916.png"><h3><a href="dash.html">Expense Tracking</h3><p>Track your expenses and receive smart suggestions.</p></div></a>
+    <div class="feature-card"><img src="https://cdn-icons-png.flaticon.com/512/4712/4712100.png"><h3><a href="chat(1).html">AI Financial Guidance</h3><p>Personalized sustainable investment insights.</p></div></a>
+    <div class="feature-card"><img src="https://cdn-icons-png.flaticon.com/512/4287/4287638.png"><h3><a href="eco.html">Eco-Friendly Tips</h3><p>Invest and spend responsibly for the planet.</p></div></a>
+    <div class="feature-card"><img src="https://cdn-icons-png.flaticon.com/512/4149/4149670.png"><h3>Portfolio</h3><p>Monitor performance & eco impact.</p></div>
+    <div class="feature-card"><img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"><h3>Green Investments</h3><p>Define financial and sustainability goals with AI support.</p></div>
+    <div class="feature-card"><img src="https://cdn-icons-png.flaticon.com/512/1828/1828919.png"><h3>Reports & Insights</h3><p>Get detailed eco-financial performance reports.</p></div>
+  </div>
+</section>
+
+<!-- How it Works -->
+<section class="how-it-works" id="how-it-works">
+  <h2>How it Works</h2>
+  <div class="steps">
+    <div class="step"><img src="https://cdn-icons-png.flaticon.com/512/1041/1041916.png"><h4>Expense Tracking</h4><p>See your financial Expenses and Track them with our Tracker.</p></div>
+    <div class="step"><img src="https://cdn-icons-png.flaticon.com/512/4712/4712100.png"><h4>Ask Chatbot</h4><p>Enter your financial queries and sustainability goals.</p></div>
+    <div class="step"><img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"><h4>Receive Advice</h4><p>Get AI-driven personalized recommendations.</p></div>
+    <div class="step"><img src="https://cdn-icons-png.flaticon.com/512/1828/1828919.png"><h4>Track Progress</h4><p>Monitor your investments and eco-friendly impact.</p></div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section class="testimonials" id="testimonials">
+  <h2>What Users Say</h2>
+  <div class="testimonial-card"><img src="https://cdn-icons-png.flaticon.com/512/4140/4140037.png"><p>"GreenFin AI helped me invest smarter while supporting the planet!"</p><strong>- Alex P.</strong></div>
+  <div class="testimonial-card"><img src="https://cdn-icons-png.flaticon.com/512/4140/4140047.png"><p>"The chatbot is intuitive and easy to use. Highly recommend!"</p><strong>- Priya S.</strong></div>
+</section>
+
+<!-- CTA -->
+<section class="cta" id="login">
+  <button onclick="window.location.href='chat(1).html'">Try Chatbot</button>
+  <button onclick="window.location.href='dash.html'">Expense Tracker</button>
+</section>
+
+<footer id="about">
+  &copy; 2025 GreenFin AI | Made with 💚 for Sustainable Finance
+</footer>
+
+<script>
+  const nav = document.querySelector("nav");
+  const links = nav.querySelectorAll("a");
+  const indicator = nav.querySelector(".active-indicator");
+  const bolt = nav.querySelector(".bolt");
+
+  function getOffsetLeft(el) {
+    return el.offsetLeft + (el.offsetWidth - indicator.offsetWidth)/2;
+  }
+
+  // Initialize active indicator
+  let activeLink = links[0];
+  indicator.style.transform = `translateX(${getOffsetLeft(activeLink)}px)`;
+
+  function makeBoltPath(x1, x2, y) {
+    const midX = (x1 + x2)/2;
+    return `M${x1},${y} L${midX-10},${y-15} L${midX+10},${y+15} L${x2},${y}`;
+  }
+
+  function moveIndicator(link){
+    const targetX = getOffsetLeft(link);
+    const currentX = parseFloat(indicator.style.transform.replace(/[^0-9.-]/g,'')) || 0;
+
+    // Draw lightning bolt
+    const path = makeBoltPath(currentX + indicator.offsetWidth/2, targetX + indicator.offsetWidth/2, nav.offsetHeight);
+    bolt.setAttribute("d", path);
+
+    gsap.fromTo(bolt, {strokeDasharray:200, strokeDashoffset:200}, 
+      {strokeDashoffset:0, duration:0.3, ease:"power2.out",
+       onComplete:()=>{ 
+         gsap.to(bolt, {opacity:0, duration:0.2});
+         gsap.to(indicator, {x:targetX, duration:0.3, ease:"power2.out"});
+       }
+      });
+    gsap.set(bolt,{opacity:1});
+  }
+
+  links.forEach(link=>{
+    link.addEventListener("click",(e)=>{
+      e.preventDefault();
+      activeLink = link;
+      links.forEach(l=>l.classList.remove("active"));
+      link.classList.add("active");
+      moveIndicator(link);
+      const targetID = link.getAttribute("href");
+      if(targetID.startsWith("#")){
+        document.querySelector(targetID)?.scrollIntoView({behavior:"smooth"});
+      }
+    });
+  });
+
+  // Scroll animations
+  const sections = document.querySelectorAll("section");
+  const features = document.querySelectorAll(".feature-card");
+  const navLinks = document.querySelectorAll("nav a");
+
+  const revealOnScroll = () => {
+    const scrollY = window.scrollY;
+
+    sections.forEach(sec => {
+      const rect = sec.getBoundingClientRect();
+      if (rect.top < window.innerHeight - 100) sec.classList.add("visible");
+    });
+
+    features.forEach((card, i) => {
+      const rect = card.getBoundingClientRect();
+      if (rect.top < window.innerHeight - 50) {
+        setTimeout(() => card.classList.add("visible"), i * 200);
+      }
+    });
+
+    // Highlight navbar active link on scroll
+    sections.forEach(sec => {
+      let top = scrollY;
+      let offset = sec.offsetTop - 150;
+      let height = sec.offsetHeight;
+      let id = sec.getAttribute("id");
+      if (top >= offset && top < offset + height) {
+        navLinks.forEach(link => link.classList.remove("active"));
+        document.querySelector(`nav a[href*=${id}]`)?.classList.add("active");
+        moveIndicator(document.querySelector(`nav a[href*=${id}]`));
+      }
+    });
+  };
+
+  window.addEventListener("scroll", revealOnScroll);
+  revealOnScroll();
+</script>
+</body>
+</html>

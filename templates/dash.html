@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Expense Tracker — Polished Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* === Theme & tokens === */
+    :root{
+      --bg: #f5f8fa;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --glass: rgba(255,255,255,0.6);
+      --primary: linear-gradient(135deg,#3dd36b,#2e7d32);
+      --accent: linear-gradient(135deg,#4facfe,#1f7ae0);
+      --danger: #e53935;
+      --radius: 14px;
+      --shadow: 0 10px 30px rgba(20,30,40,0.06);
+      --glass-blur: 8px;
+      --max-width: 1200px;
+      --ease: cubic-bezier(.2,.9,.3,1);
+    }
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+    body{background:var(--bg);color:#0f1724; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+    .app{max-width:var(--max-width);margin:28px auto;padding:20px;display:grid;grid-template-columns:1fr;gap:18px;}
+
+    /* Top nav (glass) */
+    header.topbar{
+      display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-radius:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.7));
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(var(--glass-blur));
+    }
+    .brand{display:flex;gap:12px;align-items:center;}
+    .logo{
+      width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#1f7ae0,#4facfe);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;box-shadow:0 6px 18px rgba(31,122,224,0.25);
+    }
+    .brand h1{margin:0;font-size:18px;letter-spacing:0.2px;}
+    .nav-actions{display:flex;gap:10px;align-items:center;}
+    .btn{background:transparent;border:0;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;}
+    .btn.ghost{background:transparent}
+    .btn.primary{background:linear-gradient(90deg,#4dd36a,#2e7d32);color:#fff;box-shadow:0 8px 24px rgba(46,125,50,0.12)}
+    .toggle{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:999px;background:rgba(15,23,36,0.04)}
+
+    /* Main layout: left column (forms) and right dashboard */
+    .layout{display:grid;grid-template-columns:360px 1fr;gap:18px;}
+    @media(max-width:980px){ .layout{grid-template-columns:1fr; } }
+
+    /* Forms card */
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;overflow:hidden;}
+    .auth-tabs{display:flex;gap:6px;margin-bottom:12px;}
+    .auth-tab{flex:1;text-align:center;padding:8px;border-radius:10px;cursor:pointer;font-weight:700;color:var(--muted)}
+    .auth-tab.active{background:var(--glass);color:#0f1724;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.04)}
+    .field{display:flex;flex-direction:column;margin:8px 0}
+    label{font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,select{padding:10px 12px;border-radius:10px;border:1px solid rgba(15,23,36,0.06);font-size:15px}
+    .row{display:flex;gap:8px}
+    .action-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .muted-note{font-size:13px;color:var(--muted);margin-top:8px}
+
+    /* Dashboard (right column) */
+    .dashboard-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .user-card{display:flex;gap:12px;align-items:center}
+    .avatar{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#4facfe,#1f7ae0);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px}
+    .user-meta{line-height:1}
+    .user-meta .name{font-weight:700;font-size:16px}
+    .user-meta .email{font-size:13px;color:var(--muted)}
+
+    /* Stats grid */
+    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+    @media(max-width:980px){ .stats-grid{grid-template-columns:repeat(2,1fr);} }
+    @media(max-width:560px){ .stats-grid{grid-template-columns:1fr;} }
+
+    .stat{
+      padding:16px;border-radius:12px;color:white;position:relative;overflow:hidden;
+      min-height:96px;display:flex;flex-direction:column;justify-content:space-between;
+      transition:transform .35s var(--ease), box-shadow .35s var(--ease);
+    }
+    .stat:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(12,20,30,0.08)}
+    .stat .label{font-size:13px;opacity:0.95}
+    .stat .value{font-size:22px;font-weight:800;letter-spacing:0.2px}
+    .stat.income{background:linear-gradient(135deg,#3dd36b,#219653)}
+    .stat.expense{background:linear-gradient(135deg,#ff7a7a,#e53935)}
+    .stat.balance{background:linear-gradient(135deg,#4facfe,#1f7ae0)}
+
+    /* Charts area */
+    .charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:980px){ .charts{grid-template-columns:1fr} }
+    .chart-card{padding:12px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);min-height:260px;display:flex;flex-direction:column}
+    .chart-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .small-muted{font-size:13px;color:var(--muted)}
+
+    /* Expense list + controls */
+    .list{max-height:260px;overflow:auto;padding:8px;margin-top:6px}
+    .expense-item{display:flex;justify-content:space-between;padding:8px;border-radius:10px;margin-bottom:8px;border:1px solid rgba(15,23,36,0.04);align-items:center}
+    .pill{padding:6px 8px;border-radius:999px;font-weight:700;font-size:12px}
+
+    /* Progress circle (budget) */
+    .budget-wrap{display:flex;gap:14px;align-items:center}
+    .progress-svg{width:110px;height:110px}
+
+    /* Footer message */
+    .msg{padding:12px;border-radius:10px;background:linear-gradient(90deg,#fff3cd,#ffe8a1);color:#4a2d00;font-weight:700;margin-top:10px}
+
+    /* Small helpers */
+    .hidden{display:none}
+    .muted{color:var(--muted)}
+    .center{text-align:center}
+    a.link{color:#1f7ae0;text-decoration:none;font-weight:700}
+
+    /* subtle fade-up animation for cards */
+    .fadeUp{animation:fadeUp .5s both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    /* dark mode (simple toggle) */
+    .dark {
+      --bg: #0b1220;
+      --card: #071021;
+      --muted: #9aa6b2;
+      color: #e6eef7;
+    }
+    .dark header.topbar{background:linear-gradient(180deg, rgba(10,14,22,0.6), rgba(10,14,22,0.5));}
+    .dark .logo{box-shadow:none}
+    .dark .stat.balance{background:linear-gradient(135deg,#2b9cff,#1f6ee6)}
+  </style>
+</head>
+<body>
+  <div class="app" id="appRoot">
+
+    <header class="topbar fadeUp" role="banner">
+      <div class="brand">
+        <div class="logo">ET</div>
+        <div>
+          <h1 style="margin:0">Expense Tracker</h1>
+          <div style="font-size:13px;color:var(--muted)">Invest wisely,Live sustainably</div>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <div class="toggle" title="Dark / Light">
+          <button class="btn ghost" id="darkToggle">🌙</button>
+        </div>
+        <div id="topNav" style="display:none">
+          <button class="btn" onclick="show('dashboard')">Dashboard</button>
+          <button class="btn" onclick="show('income')">Income</button>
+          <button class="btn" onclick="show('add-expense')">Add Expense</button>
+          <button class="btn" onclick="show('expenses')">View Expenses</button>
+          <button class="btn" onclick="doLogout()">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+
+      <!-- LEFT: Auth + forms -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <!-- AUTH -->
+        <div class="card fadeUp" id="authCard">
+          <div class="auth-tabs" role="tablist">
+            <div class="auth-tab active" id="tabLogin" onclick="setAuthTab('login')">Login</div>
+            <div class="auth-tab" id="tabRegister" onclick="setAuthTab('register')">Register</div>
+          </div>
+
+          <div id="authForms">
+            <!-- Login -->
+            <div id="loginForm">
+              <div class="field">
+                <label for="loginUser">Username</label>
+                <input id="loginUser" placeholder="your username" autocomplete="username">
+              </div>
+              <div class="field">
+                <label for="loginPass">Password</label>
+                <input id="loginPass" type="password" placeholder="password" autocomplete="current-password">
+              </div>
+              <div class="action-row">
+                <button class="btn" onclick="toggleRegister()">Quick Register</button>
+                <button class="btn primary" onclick="doLogin()">Login</button>
+              </div>
+            </div>
+
+            <!-- Register -->
+            <div id="registerForm" class="hidden">
+              <div class="field">
+                <label for="regUser">Username</label>
+                <input id="regUser" placeholder="choose a username">
+              </div>
+              <div class="field">
+                <label for="regPass">Password</label>
+                <input id="regPass" type="password" placeholder="create a password">
+              </div>
+              <div class="field">
+                <label for="regName">Full name</label>
+                <input id="regName" placeholder="Your name">
+              </div>
+              <div class="field">
+                <label for="regEmail">Email</label>
+                <input id="regEmail" type="email" placeholder="you@example.com">
+              </div>
+              <div class="field">
+                <label for="regBudget">Monthly budget (₹)</label>
+                <input id="regBudget" type="number" placeholder="e.g. 30000">
+              </div>
+              <div class="action-row">
+                <button class="btn" onclick="toggleRegister()">Cancel</button>
+                <button class="btn primary" onclick="doRegister()">Create & Enter</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="muted-note">Tip: for best demos, register with a monthly budget to show budget warnings.</div>
+        </div>
+
+        <!-- Add Expense -->
+        <div class="card fadeUp" id="addExpenseCard">
+          <h3 style="margin:0 0 8px 0">Quick Add Expense</h3>
+          <div class="field"><label for="expTitle">Title</label><input id="expTitle" placeholder="Lunch, Cab, Groceries"></div>
+          <div class="row">
+            <div style="flex:1" class="field"><label for="expAmount">Amount (₹)</label><input id="expAmount" type="number"></div>
+            <div style="width:140px" class="field"><label for="expCategory">Category</label>
+              <select id="expCategory">
+                <option>Food</option><option>Transport</option><option>Shopping</option><option>Bills</option><option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="field"><label for="expDate">Date (optional)</label><input id="expDate" type="date"></div>
+          <div class="action-row">
+            <button class="btn" onclick="show('dashboard')">Cancel</button>
+            <button class="btn primary" onclick="addExpense()">Add Expense</button>
+          </div>
+        </div>
+
+        <!-- Income -->
+        <div class="card fadeUp" id="incomeCard">
+          <h3 style="margin:0 0 8px 0">Add Income</h3>
+          <div class="field"><label for="incomeSource">Source</label><input id="incomeSource" placeholder="Salary"></div>
+          <div class="field"><label for="incomeAmount">Amount (₹)</label><input id="incomeAmount" type="number"></div>
+          <div class="action-row">
+            <button class="btn" onclick="show('dashboard')">Cancel</button>
+            <button class="btn primary" onclick="addIncome()">Add Income</button>
+          </div>
+
+          <div style="margin-top:12px">
+            <h4 style="margin:6px 0">Recent Incomes</h4>
+            <div id="incomeList" class="list muted">No incomes yet</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Dashboard -->
+      <div>
+        <div class="card fadeUp dashboard-header">
+          <div class="user-card">
+            <div class="avatar" id="avatar">U</div>
+            <div class="user-meta">
+              <div class="name" id="userName">Guest</div>
+              <div class="email" id="userEmail">Not logged in</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="small-muted" id="userBudgetText">Budget: —</div>
+            <div id="authButtons">
+              <!-- login/register buttons will be shown when not logged in -->
+              <button class="btn primary" onclick="showAuth()">Get started</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid fadeUp" id="statsGrid" aria-live="polite">
+          <div class="stat income" title="Total income">
+            <div class="label">Total Income</div>
+            <div class="value" id="totalIncome">₹0</div>
+            <div style="opacity:0.9;font-size:13px">Recent: <span id="recentIncome">—</span></div>
+          </div>
+          <div class="stat expense" title="Total expenses">
+            <div class="label">Total Expenses</div>
+            <div class="value" id="totalExpense">₹0</div>
+            <div style="opacity:0.9;font-size:13px">Top category: <span id="topCategory">—</span></div>
+          </div>
+          <div class="stat balance" title="Remaining balance">
+            <div class="label">Balance</div>
+            <div class="value" id="balance">₹0</div>
+            <div style="opacity:0.9;font-size:13px">Net (Income − Expenses)</div>
+          </div>
+        </div>
+
+        <div class="charts fadeUp">
+          <!-- Left: Doughnut and Budget -->
+          <div class="chart-card">
+            <div class="chart-title">
+              <strong>Expense Breakdown</strong>
+              <span class="small-muted">Expenses vs Remaining</span>
+            </div>
+            <div style="display:flex;gap:14px;align-items:center">
+              <div style="flex:1;min-height:220px">
+                <canvas id="doughnutChart" style="width:100%;height:100%"></canvas>
+              </div>
+
+              <div style="width:160px">
+                <div class="budget-wrap">
+                  <svg class="progress-svg" viewBox="0 0 40 40" id="progressSvg">
+                    <defs>
+                      <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#4dd36a"/>
+                        <stop offset="100%" stop-color="#2e7d32"/>
+                      </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="16" fill="rgba(15,23,36,0.02)"></circle>
+                    <circle cx="20" cy="20" r="16" fill="none" stroke="#e6eef7" stroke-width="3"></circle>
+                    <circle id="progressRing" cx="20" cy="20" r="16" fill="none" stroke="url(#g1)" stroke-width="3" stroke-linecap="round"
+                      stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 20 20)"></circle>
+                    <text id="progressText" x="20" y="22" text-anchor="middle" font-size="7" fill="#0f1724">0%</text>
+                  </svg>
+                </div>
+                <div style="margin-top:8px">
+                  <div class="small-muted">Budget</div>
+                  <div id="budgetSummary" style="font-weight:800;font-size:14px;margin-top:6px">No budget set</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Trend & Category bar -->
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="chart-card">
+              <div class="chart-title">
+                <strong>Monthly Trend</strong>
+                <span class="small-muted">Expenses over time</span>
+              </div>
+              <div style="flex:1;min-height:200px">
+                <canvas id="lineChart" style="width:100%;height:100%"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-title">
+                <strong>Expenses by Category</strong>
+                <span class="small-muted">Compare categories</span>
+              </div>
+              <div style="flex:1;min-height:140px">
+                <canvas id="barChart" style="width:100%;height:100%"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card fadeUp" style="margin-top:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h4 style="margin:0">Recent Expenses</h4>
+            <div class="small-muted">View all in Expenses tab</div>
+          </div>
+          <div id="expenseList" class="list">
+            <div class="muted">No expenses yet</div>
+          </div>
+
+          <div id="budgetMsg" style="margin-top:10px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  /*****************************************************************
+   * Polished Expense Tracker (single-file)
+   * - localStorage-backed users (same shape as your original app)
+   * - improved UI/UX, animations, chart gradients
+   * - works offline (Chart.js CDN required)
+   *****************************************************************/
+
+  // -------------------------
+  // Local storage helpers
+  // -------------------------
+  let currentUser = localStorage.getItem('currentUser') || null;
+  function loadUsers(){ return JSON.parse(localStorage.getItem('users')||'{}'); }
+  function saveUsers(u){ localStorage.setItem('users', JSON.stringify(u)); }
+  function setCurrentUser(u){
+    currentUser = u;
+    localStorage.setItem('currentUser', u);
+  }
+  function clearCurrentUser(){ currentUser = null; localStorage.removeItem('currentUser'); }
+
+  // -------------------------
+  // UI helpers & small state
+  // -------------------------
+  const $ = id => document.getElementById(id);
+  const charts = { doughnut:null, bar:null, line:null };
+
+  // Toggle auth tab
+  function setAuthTab(tab){
+    document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+    document.getElementById('tabRegister').classList.toggle('active', tab==='register');
+    document.getElementById('loginForm').classList.toggle('hidden', tab!=='login');
+    document.getElementById('registerForm').classList.toggle('hidden', tab!=='register');
+  }
+  function toggleRegister(){ // quick shortcut to open register
+    setAuthTab('register');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  // Show sections (dashboard/income/add-expense/expenses)
+  function show(section){
+    // show/hide left cards based on intent
+    // we keep everything visible but focus scroll to the target to simulate navigation
+    if(section === 'dashboard'){ window.scrollTo({top:0,behavior:'smooth'}); renderDashboard(); }
+    if(section === 'income'){ window.scrollTo({top:0,behavior:'smooth'}); populateIncomeList(); }
+    if(section === 'add-expense'){ document.getElementById('expTitle').focus(); window.scrollTo({top:0,behavior:'smooth'}); }
+    if(section === 'expenses'){ renderExpenseList(); window.scrollTo({top:0,behavior:'smooth'}); }
+  }
+
+  // -------------
+  // Auth
+  // -------------
+  function doRegister(){
+    const u = $('regUser').value.trim();
+    const p = $('regPass').value;
+    const name = $('regName').value.trim();
+    const email = $('regEmail').value.trim();
+    const budget = parseFloat($('regBudget').value) || 0;
+    if(!u||!p) return alert('Enter username & password');
+    const users = loadUsers();
+    if(users[u]) return alert('User exists — choose different username');
+    users[u] = { password:p, profile:{ fullName:name||u, email:email||'', budget:budget }, incomes:[], expenses:[] };
+    saveUsers(users);
+    // login
+    setCurrentUser(u);
+    setupAfterAuth();
+  }
+  function doLogin(){
+    const u = $('loginUser').value.trim(), p = $('loginPass').value;
+    if(!u||!p) return alert('Enter username & password');
+    const users = loadUsers();
+    if(!users[u] || users[u].password !== p) return alert('Invalid credentials');
+    setCurrentUser(u);
+    setupAfterAuth();
+  }
+  function doLogout(){
+    if(!confirm('Logout?')) return;
+    clearCurrentUser();
+    location.reload();
+  }
+
+  function showAuth(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  // Called after login/register
+  function setupAfterAuth(){
+    // hide auth top-level action, show nav
+    $('topNav').style.display = 'flex';
+    document.getElementById('authCard').style.display = 'none';
+    // show quick action buttons
+    $('authButtons').innerHTML = `<button class="btn" onclick="show('add-expense')">Add Expense</button>`;
+    renderDashboard();
+    show('dashboard');
+  }
+
+  // -------------
+  // Income
+  // -------------
+  function addIncome(){
+    if(!currentUser) return alert('Login first');
+    const src = $('incomeSource').value.trim();
+    const amt = parseFloat($('incomeAmount').value) || 0;
+    if(!src || amt <= 0) return alert('Enter source and positive amount');
+    const users = loadUsers();
+    users[currentUser].incomes.push({id:Date.now(), source:src, amount:amt, date:(new Date()).toISOString().slice(0,10)});
+    saveUsers(users);
+    $('incomeSource').value=''; $('incomeAmount').value='';
+    populateIncomeList(); renderDashboard();
+  }
+  function populateIncomeList(){
+    const users = loadUsers();
+    const arr = (currentUser && users[currentUser].incomes) || [];
+    const container = $('incomeList');
+    if(!arr.length){ container.innerHTML = '<div class="muted">No incomes yet</div>'; return; }
+    container.innerHTML = arr.slice().reverse().map(i=>`<div style="padding:8px;border-radius:8px;margin-bottom:8px;border:1px solid rgba(15,23,36,0.04)">${i.date} — <strong>${i.source}</strong>: ₹${i.amount.toFixed(2)}</div>`).join('');
+  }
+
+  // -------------
+  // Expenses
+  // -------------
+  function addExpense(){
+    if(!currentUser) return alert('Login first');
+    const t = $('expTitle').value.trim() || 'Expense';
+    const amt = parseFloat($('expAmount').value);
+    const cat = $('expCategory').value;
+    let date = $('expDate').value;
+    if(!amt || amt <= 0) return alert('Enter positive amount');
+    if(!date) date = (new Date()).toISOString().slice(0,10);
+    const users = loadUsers();
+    users[currentUser].expenses.push({id:Date.now(), title:t, amount:amt, category:cat, date:date});
+    saveUsers(users);
+    $('expTitle').value=''; $('expAmount').value=''; $('expDate').value='';
+    renderExpenseList(); renderDashboard();
+  }
+
+  function renderExpenseList(){
+    const users = loadUsers();
+    const arr = (currentUser && users[currentUser].expenses) || [];
+    const container = $('expenseList');
+    if(!arr.length){ container.innerHTML = '<div class="muted">No expenses yet</div>'; return; }
+    // show most recent 8
+    const items = arr.slice().reverse().slice(0,8).map(e=>`
+      <div class="expense-item">
+        <div>
+          <div style="font-weight:700">${e.title}</div>
+          <div class="muted" style="font-size:13px">${e.date} • ${e.category}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:800">₹${(+e.amount).toFixed(2)}</div>
+          <div class="pill" style="margin-top:6px;background:rgba(15,23,36,0.04)">${e.category}</div>
+        </div>
+      </div>
+    `).join('');
+    container.innerHTML = items;
+  }
+
+  // -------------------------
+  // Charts (Chart.js)
+  // -------------------------
+  function createGradient(ctx, area, colorStart, colorEnd){
+    const g = ctx.createLinearGradient(0,0,0,area.bottom||300);
+    g.addColorStop(0, colorStart);
+    g.addColorStop(1, colorEnd);
+    return g;
+  }
+
+  function destroyChart(ref){
+    if(ref && ref.destroy) try{ ref.destroy(); }catch(e){}
+  }
+
+  function renderChartsAndUI(){
+    if(!currentUser) return;
+    const users = loadUsers();
+    const user = users[currentUser] || { profile:{fullName:currentUser,email:'',budget:0}, incomes:[], expenses:[] };
+    const incomes = (user.incomes||[]), expenses = (user.expenses||[]);
+    const totalIncome = incomes.reduce((s,i)=>s + (parseFloat(i.amount)||0), 0);
+    const totalExpense = expenses.reduce((s,e)=>s + (parseFloat(e.amount)||0), 0);
+    const balance = totalIncome - totalExpense;
+    const budget = parseFloat(user.profile?.budget) || 0;
+
+    // Update header block
+    $('avatar').textContent = (user.profile?.fullName||currentUser||'U').split(' ').map(s=>s[0]?.toUpperCase()).slice(0,2).join('');
+    $('userName').textContent = user.profile?.fullName || currentUser;
+    $('userEmail').textContent = user.profile?.email || '—';
+    $('userBudgetText').textContent = budget ? `Budget: ₹${budget.toFixed(2)}` : 'Budget: —';
+    $('totalIncome').textContent = `₹${totalIncome.toFixed(2)}`;
+    $('totalExpense').textContent = `₹${totalExpense.toFixed(2)}`;
+    $('balance').textContent = `₹${balance.toFixed(2)}`;
+    $('recentIncome').textContent = incomes.length ? `₹${incomes[incomes.length-1].amount}` : '—';
+
+    // Top category
+    const catMap = {};
+    expenses.forEach(e => { catMap[e.category] = (catMap[e.category]||0) + (parseFloat(e.amount)||0); });
+    const sortedCats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+    $('topCategory').textContent = sortedCats.length ? `${sortedCats[0][0]} (₹${sortedCats[0][1].toFixed(0)})` : '—';
+
+    // Budget progress circle
+    const usedPct = budget>0 ? Math.min(100, Math.round((totalExpense / budget)*100)) : 0;
+    const ring = $('progressRing');
+    const circumference = 2 * Math.PI * 16;
+    const offset = circumference * (1 - usedPct/100);
+    ring.style.transition = 'stroke-dashoffset 800ms var(--ease)';
+    ring.setAttribute('stroke-dasharray', circumference);
+    ring.setAttribute('stroke-dashoffset', offset);
+    $('progressText').textContent = budget ? `${usedPct}%` : '—';
+    $('budgetSummary').textContent = budget ? `₹${totalExpense.toFixed(0)} / ₹${budget.toFixed(0)}` : 'Not set';
+
+    // Budget message
+    const budgetMsg = $('budgetMsg');
+    if(budget > 0){
+      if(totalExpense > budget){
+        budgetMsg.innerHTML = `<div class="msg" style="background:linear-gradient(90deg,#ffe6e6,#ffd1d1);color:#7a0f12">⚠️ Overspending — exceeded by ₹${(totalExpense - budget).toFixed(2)}</div>`;
+      } else {
+        budgetMsg.innerHTML = `<div class="msg" style="background:linear-gradient(90deg,#e6fff0,#d1ffd9);color:#064a2b">✅ Within budget — remaining ₹${(budget - totalExpense).toFixed(2)}</div>`;
+      }
+    } else {
+      budgetMsg.innerHTML = `<div class="muted">No monthly budget set. Add one during registration.</div>`;
+    }
+
+    // Doughnut: expenses vs remaining
+    const dCtx = $('doughnutChart').getContext('2d');
+    destroyChart(charts.doughnut);
+    const remaining = Math.max(totalIncome - totalExpense, 0);
+    const doughnutData = totalIncome<=0 && totalExpense<=0 ? {labels:['No Data'], datasets:[{data:[1], backgroundColor:['#e6e6e6'] }]} :
+      { labels:['Expenses','Remaining'], datasets:[{ data:[totalExpense,remaining], backgroundColor:[ '#ff7a7a', '#4dd36a' ] }] };
+    charts.doughnut = new Chart(dCtx, {
+      type:'doughnut',
+      data:doughnutData,
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:function(ctx){ return ctx.label + ': ₹' + ctx.raw.toFixed(2); }}}},
+        animation:{animateScale:true, duration:800, easing:'easeOutQuart'}
+      }
+    });
+
+    // Line: monthly expense trend (by YYYY-MM)
+    const monthly = {};
+    expenses.forEach(e=>{
+      const m = (e.date||new Date().toISOString().slice(0,10)).slice(0,7);
+      monthly[m] = (monthly[m]||0) + (parseFloat(e.amount)||0);
+    });
+    const months = Object.keys(monthly).sort();
+    const lineCtx = $('lineChart').getContext('2d');
+    destroyChart(charts.line);
+    if(months.length === 0){
+      charts.line = new Chart(lineCtx, {
+        type:'line',
+        data:{ labels:['No Data'], datasets:[{ label:'Monthly Expenses', data:[0], borderColor:'#2196f3', tension:0.3, fill:false }]},
+        options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, animation:{duration:600}}
+      });
+    } else {
+      // create gradient
+      const grad = lineCtx.createLinearGradient(0,0,0,300);
+      grad.addColorStop(0,'rgba(79,172,254,0.9)');
+      grad.addColorStop(1,'rgba(31,122,224,0.05)');
+      charts.line = new Chart(lineCtx, {
+        type:'line',
+        data:{ labels: months, datasets:[{ label:'Monthly Expenses', data: months.map(m=>monthly[m]), borderColor:'#1f7ae0', backgroundColor:grad, tension:0.3, fill:true, pointRadius:4 }]},
+        options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, animation:{duration:800,easing:'easeOutQuart'}}
+      });
+    }
+
+    // Bar: category-wise
+    const barCtx = $('barChart').getContext('2d');
+    destroyChart(charts.bar);
+    const barLabels = Object.keys(catMap);
+    const barValues = Object.values(catMap);
+    if(barLabels.length === 0){
+      charts.bar = new Chart(barCtx, {
+        type:'bar',
+        data:{ labels:['No Data'], datasets:[{ label:'Expenses', data:[0], backgroundColor:'#cfcfcf' }]},
+        options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, animation:{duration:600}}
+      });
+    } else {
+      const g = barCtx.createLinearGradient(0,0,0,300);
+      g.addColorStop(0,'#4dd36a'); g.addColorStop(1,'#2e7d32');
+      charts.bar = new Chart(barCtx, {
+        type:'bar',
+        data:{ labels:barLabels, datasets:[{ label:'Expenses', data:barValues, backgroundColor: barLabels.map((l,i)=>g) }]},
+        options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, animation:{duration:800,easing:'easeOutQuart'}}
+      });
+    }
+  }
+
+  // -------------------------
+  // Dashboard render orchestration
+  // -------------------------
+  function renderDashboard(){
+    if(!currentUser) return;
+    // show/hide UI pieces
+    document.getElementById('authCard').style.display = 'none';
+    document.getElementById('topNav').style.display = 'flex';
+    document.getElementById('incomeCard').style.display = 'block';
+    document.getElementById('addExpenseCard').style.display = 'block';
+    // render charts + lists
+    renderChartsAndUI();
+    populateIncomeList();
+    renderExpenseList();
+  }
+
+  // -------------------------
+  // Init: restore session, dark mode handling
+  // -------------------------
+  (function init(){
+    // dark mode from localStorage
+    const darkPref = localStorage.getItem('darkMode') === 'true';
+    if(darkPref) document.documentElement.classList.add('dark');
+
+    document.getElementById('darkToggle').addEventListener('click', ()=>{
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('darkMode', isDark);
+    });
+
+    // show nav only when logged in
+    if(currentUser){
+      const users = loadUsers();
+      if(users[currentUser]){
+        setupAfterAuth();
+        renderDashboard();
+        return;
+      } else {
+        clearCurrentUser();
+      }
+    } else {
+      // not logged in: keep auth card visible
+      document.getElementById('topNav').style.display = 'none';
+      // small UX: hide dashboard parts until login
+      document.getElementById('incomeCard').style.display = 'block';
+      document.getElementById('addExpenseCard').style.display = 'block';
+    }
+  })();
+
+  </script>
+</body>
+</html>
